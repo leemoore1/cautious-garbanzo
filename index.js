@@ -49,7 +49,41 @@ const main = async () => {
             );
           });
 
-          // TODO #3: For each commit, write repo URL, URL of last comment, URL of second to last comment
+          // Task #3: For each commit, write repo URL, URL of last comment, URL of second to last comment
+          const comments = data.map((d) => {
+            return d.comments_url;
+          });
+
+          comments.forEach(async (c) => {
+            await fetch(c).then((response) => {
+              try {
+                response.json().then((data) => {
+                  if (data.length < 2) {
+                    throw new Error("Less than 2 comments for this commit.");
+                  }
+
+                  // Reverse sort
+                  const sorted = Array.from(data).reverse();
+                  const lastTwo = sorted.slice(0, 2);
+                  const repoUrl = lastTwo[0].html_url.replace(
+                    new RegExp(/\/commits\/*/i)
+                  );
+                  const newObj = [
+                    {
+                      repoUrl,
+                      ...lastTwo[0].url,
+                      ...lastTwo[1].url,
+                    },
+                  ];
+
+                  const csv = Papa.unparse(newObj);
+                  writeToFile(file3, csv);
+                });
+              } catch (error) {
+                throw error;
+              }
+            });
+          });
         });
       } catch (error) {
         console.error("Failed to parse commits as JSON");
