@@ -28,62 +28,10 @@ const main = async () => {
           generateAuthorsCsvFile(data);
 
           // Task #2: Get unique committers and write first 5 followers to CSV
-          const committers = data.map((d) => {
-            return d.committer.login;
-          });
-
-          const unique = Array.from(new Set(committers));
-          unique.forEach(async (u) => {
-            await fetch(`https://api.github.com/users/${u}/followers`).then(
-              (response) => {
-                try {
-                  response.json().then((data) => {
-                    const firstFive = Array.from(data).slice(0, 5);
-                    const csv = Papa.unparse(firstFive);
-                    writeToFile(file2, csv);
-                  });
-                } catch (error) {
-                  throw error;
-                }
-              }
-            );
-          });
+          generateFollowersCsvFile(data);
 
           // Task #3: For each commit, write repo URL, URL of last comment, URL of second to last comment
-          const comments = data.map((d) => {
-            return d.comments_url;
-          });
-
-          comments.forEach(async (c) => {
-            await fetch(c).then((response) => {
-              try {
-                response.json().then((data) => {
-                  if (data.length < 2) {
-                    throw new Error("Less than 2 comments for this commit.");
-                  }
-
-                  // Reverse sort
-                  const sorted = Array.from(data).reverse();
-                  const lastTwo = sorted.slice(0, 2);
-                  const repoUrl = lastTwo[0].html_url.replace(
-                    new RegExp(/\/commits\/*/i)
-                  );
-                  const newObj = [
-                    {
-                      repoUrl,
-                      ...lastTwo[0].url,
-                      ...lastTwo[1].url,
-                    },
-                  ];
-
-                  const csv = Papa.unparse(newObj);
-                  writeToFile(file3, csv);
-                });
-              } catch (error) {
-                throw error;
-              }
-            });
-          });
+          generateCommentsCsvFile(data);
         });
       } catch (error) {
         console.error("Failed to parse commits as JSON");
@@ -126,6 +74,67 @@ const generateAuthorsCsvFile = (data) => {
   }
 
   writeToFile(file1, csv);
+};
+
+const generateFollowersCsvFile = (data) => {
+  const committers = data.map((d) => {
+    return d.committer.login;
+  });
+
+  const unique = Array.from(new Set(committers));
+  unique.forEach(async (u) => {
+    await fetch(`https://api.github.com/users/${u}/followers`).then(
+      (response) => {
+        try {
+          response.json().then((data) => {
+            const firstFive = Array.from(data).slice(0, 5);
+            const csv = Papa.unparse(firstFive);
+            writeToFile(file2, csv);
+          });
+        } catch (error) {
+          throw error;
+        }
+      }
+    );
+  });
+};
+
+const generateCommentsCsvFile = (data) => {
+  const comments = data.map((d) => {
+    return d.comments_url;
+  });
+
+  comments.forEach(async (c) => {
+    await fetch(c).then((response) => {
+      try {
+        response.json().then((data) => {
+          // TODO: Mocked API response?
+          if (data.length < 2) {
+            throw new Error("Less than 2 comments for this commit.");
+          }
+
+          // Reverse sort
+          const sorted = Array.from(data).reverse();
+          const lastTwo = sorted.slice(0, 2);
+          const repoUrl = lastTwo[0].html_url.replace(
+            new RegExp(/\/commits\/*/i)
+          );
+          const newObj = [
+            {
+              repoUrl,
+              ...lastTwo[0].url,
+              ...lastTwo[1].url,
+            },
+          ];
+
+          const csv = Papa.unparse(newObj);
+          writeToFile(file3, csv);
+        });
+      } catch (error) {
+        throw error;
+      }
+    });
+  });
 };
 
 main();
