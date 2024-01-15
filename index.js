@@ -1,7 +1,8 @@
 var fs = require("fs");
 var Papa = require("papaparse");
+// TODO: use Octokit lib?
 
-const url = "https://api.github.com/repositories/19438/commits";
+const commitsUrl = "https://api.github.com/repositories/19438/commits";
 const file1 = "part1.csv";
 const file2 = "part2.csv";
 const file3 = "part3.csv";
@@ -12,7 +13,7 @@ const main = async () => {
 
   try {
     // TODO: Auth with token to prevent rate limiting?
-    await fetch(url).then((response) => {
+    await fetch(commitsUrl).then((response) => {
       // Return if we're being rate limited by the GitHub API.
       if (response.status !== 200) {
         console.error(
@@ -26,7 +27,28 @@ const main = async () => {
           // Task #1: Write commit author details to CSV
           generateAuthorsCsvFile(data);
 
-          // TODO #2: Get unique commit authors and write first 5 followers to CSV
+          // Task #2: Get unique committers and write first 5 followers to CSV
+          const committers = data.map((d) => {
+            return d.committer.login;
+          });
+
+          const unique = Array.from(new Set(committers));
+          unique.forEach(async (u) => {
+            await fetch(`https://api.github.com/users/${u}/followers`).then(
+              (response) => {
+                try {
+                  response.json().then((data) => {
+                    const firstFive = Array.from(data).slice(0, 5);
+                    const csv = Papa.unparse(firstFive);
+                    writeToFile(file2, csv);
+                  });
+                } catch (error) {
+                  throw error;
+                }
+              }
+            );
+          });
+
           // TODO #3: For each commit, write repo URL, URL of last comment, URL of second to last comment
         });
       } catch (error) {
